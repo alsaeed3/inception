@@ -1,65 +1,86 @@
+version: "3.9"
+
 services:
-  mariadb:
-    container_name: mariadb
-    image: mariadb
+  nginx:
     build:
-      context: ./requirements/mariadb/.
-      dockerfile: Dockerfile
+      context: requirements/nginx/
+      args:
+        CERT_PATH: ${CERT_PATH}
+        KEY_PATH: ${KEY_PATH}
+    container_name: nginx
+    image: nginx:42
+    ports:
+      - "443:443"
     restart: on-failure
+    env_file:
+      - ./.env
+    depends_on:
+      wordpress:
+        condition: service_started
     networks:
-      - inception
-    env_file: .env
+      - app
     volumes:
-      - mariadb_data:/var/lib/mysql
-  
+      - wordpress_vol:/var/www/html/wordpress
   wordpress:
     container_name: wordpress
-    image: wordpress
+    image: wordpress:42
     build:
-      context: ./requirements/wordpress/.
-      dockerfile: Dockerfile
-    restart: always
+      context: requirements/wordpress
+      args:
+        DB_NAME: ${DB_NAME}
+        DB_USER: ${DB_USER}
+        DB_PASS: ${DB_PASS}
+        DB_ROOT_PASS: ${DB_ROOT_PASS}
+        DB_HOSTNAME: ${DB_HOSTNAME}
+        WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL}
+        WP_ADMIN_USER: ${WP_ADMIN_USER}
+        WP_ADMIN_PASS: ${WP_ADMIN_PASS}
+        WP_URL: ${WP_URL}
+        WP_USER: ${WP_USER}
+        WP_EMAIL: ${WP_EMAIL}
+        WP_PASS: ${WP_PASS}
+    env_file:
+      - ./.env
     networks:
-      - inception
-    env_file: ./.env
+      - app
     depends_on:
-      - mariadb
+      mariadb:
+        condition: service_started
     volumes:
-      - wp_files:/var/www/html/wordpress
-  nginx:
-    container_name: nginx
-    image: nginx
+      - wordpress_vol:/var/www/html/wordpress
+  mariadb:
+    container_name: mariadb
+    image: mariadb:42
     build:
-      context: ./requirements/nginx/.
-      dockerfile: Dockerfile
-    ports:
-      - 443:443
-    restart: always
+      context: requirements/mariadb
+      args: 
+        DB_NAME: ${DB_NAME}
+        DB_USER: ${DB_USER}
+        DB_PASS: ${DB_PASS}
+        DB_ROOT_PASS: ${DB_ROOT_PASS}
+    env_file:
+      - ./.env
     networks:
-      - inception
-    env_file: ./.env
-    depends_on:
-      - wordpress
+      - app
     volumes:
-      - wp_files:/var/www/html/wordpress
-      - ../secrets:/etc/nginx/certs
-networks:
-  inception:
-    name: inception
-    driver: bridge
+      - mariadb_vol:/var/lib/mysql
+    
 
 volumes:
-  mariadb_data:
-    name: mariadb_data
+  mariadb_vol:
+    name: mariadb
     driver: local
     driver_opts:
-      device: /home/alsaeed/data/mariadb_data
-      o: bind
-      type: none
-  wp_files:
-    name: wp_files
+      type: 'none'
+      o: 'bind'
+      device: '/home/alsaeed/data/mariadb'
+  wordpress_vol:
+    name: wordpress
     driver: local
     driver_opts:
-      device: /home/alsaeed/data/wp_files
-      o: bind
-      type: none
+      type: 'none'
+      o: 'bind'
+      device: '/home/alsaeed/data/wordpress'
+networks:
+  app:
+    driver: bridge

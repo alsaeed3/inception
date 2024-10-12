@@ -1,21 +1,25 @@
-# base image
 FROM alpine:3.19
 
-# installing neccessary packages
-RUN apk update && apk upgrade && apk add --no-cache nginx openssl
+ARG CERT_PATH
+ARG KEY_PATH
 
-# creating neccessary folders
-RUN mkdir -p /etc/nginx /run/nginx /usr/share/nginx/html /etc/nginx/certs 
+# Install necessary packages
+RUN apk update && apk add --no-cache openssl nginx
 
-# copy the custom conf file
-COPY ./conf/nginx.conf /etc/nginx/nginx.conf
+# Create directory for certificates
+RUN mkdir -p /etc/nginx/certificates
 
-# open port for other containers (or web) to access
+# Generate SSL certificate and key
+RUN openssl req -x509 -newkey rsa:2048 -nodes -keyout ${KEY_PATH} -out ${CERT_PATH} -subj "/CN=alsaeed.42.fr" -days 365
+
+# Copy Nginx configuration file
+COPY --chown=www-data:www-data ./conf/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Set permissions and create symbolic link for Nginx configuration
+RUN chmod 755 /var/www/html && ln -s /etc/nginx/conf.d/default.conf /etc/nginx/sites-enabled/default.conf
+
+# Expose HTTPS port
 EXPOSE 443
 
-# changing ownership of these directory to the nginx user
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-  chown -R nginx:nginx /etc/nginx/certs/
-
-# RUN it
-CMD ["nginx", "-g", "daemon off;", "-c", "/etc/nginx/nginx.conf"]
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]
