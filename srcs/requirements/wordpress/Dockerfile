@@ -1,34 +1,36 @@
 FROM alpine:3.19
 
-RUN apk update && apk upgrade && apk add --no-cache \
-    curl mariadb-client php81 php81-fpm php81-phar \
-    php81-mysqli php81-curl php81-iconv php81-dom \
-    php81-exif php81-gd php81-json php81-fileinfo \
-    php81-mbstring php81-openssl php81-xml php81-zip
+RUN apk update && \
+    apk add php83 php83-cli php83-fpm php83-mysqli \
+    php83-json php83-openssl php83-curl php83-zlib \
+    php83-xml php83-phar php83-intl php83-dom curl \
+    wget tar openrc vim php83-cgi php83-mbstring \
+    && ln -s /usr/bin/php83 /usr/bin/php
 
-# Create the 'nginx' user and group
-RUN addgroup nginx && \
-    adduser -D -S -G nginx nginx
 
-# mount point for our volume
-RUN mkdir -p /var/www/html/wordpress
+RUN mkdir -p /run/php
 
-COPY ./conf/www.conf /etc/php81/php-fpm.d/
+# Copy the .conf in the html directory
 
-# downloading wp-cli executable
-# then later we will use this command to download the wordpress files
-RUN wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
-RUN chmod +x wp-cli.phar
-RUN mv wp-cli.phar /usr/bin/wp
+COPY ./conf/www.conf /etc/php83/php-fpm.d
 
-WORKDIR /var/www/html/wordpress
+#we copy the script, give the right to launch it in local on our computer
+COPY ./tools/create_wordpress.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/create_wordpress.sh
+ENTRYPOINT ["/usr/local/bin/create_wordpress.sh"]
 
-COPY ./tools/wp_setup.sh .
-RUN chmod 755 wp_setup.sh
+# I need to install wp_cli command and put it in the right directory /usr/local/bin
+RUN adduser -S www-data -G www-data \
+  && curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+  && chmod +x wp-cli.phar \
+  && mv wp-cli.phar /usr/local/bin/wp \
+  && chown www-data:www-data /usr/local/bin/wp
 
-RUN chown -R nginx:nginx /var/www/html/wordpress
+#We go the html directory
+WORKDIR /var/www/html/
 
-# Expose the port
+#We expose the 9000 port
 EXPOSE 9000
 
-CMD [ "sh", "wp_setup.sh"]
+#Launch PHP FPM in foreground and ignore deamonize from conf file (-F)
+CMD ["/usr/sbin/php-fpm83", "-F"]

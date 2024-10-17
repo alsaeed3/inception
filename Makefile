@@ -1,18 +1,25 @@
-DIR = /home/alsaeed
+all:
+	@docker compose -f ./srcs/docker-compose.yml up -d --build
 
-all: inception
+down:
+	@docker compose -f ./srcs/docker-compose.yml down
 
-inception:
-	mkdir -p /home/alsaeed/data/mariadb
-	mkdir -p /home/alsaeed/data/wordpress
-	docker-compose -f ./srcs/docker-compose.yml up --build -d
+re: clean
+	@docker compose -f ./srcs/docker-compose.yml up -d --build
 
 clean:
-	docker-compose -f ./srcs/docker-compose.yml down --rmi all -v --remove-orphans 2>/dev/null || true
+	@if docker ps -qa | grep -q .; then \
+		docker stop $$(docker ps -qa); \
+		docker rm $$(docker ps -qa); \
+	fi
+	@if docker volume ls -q | grep -q .; then \
+		docker volume rm $$(docker volume ls -q); \
+	fi
+	@if docker images -qa | grep -q .; then \
+		docker rmi -f $$(docker images -qa); \
+	fi
+	@if docker network ls --format '{{.Name}}' | grep -v 'bridge\|host\|none' | grep -q .; then \
+		docker network rm $$(docker network ls --format '{{.Name}}' | grep -v 'bridge\|host\|none'); \
+	fi
 
-fclean: clean
-	sudo rm -rf /home/alsaeed/data/*
-	docker rmi -f $$(docker images -a -q) 2> /dev/null || true
-	docker volume prune -f
-
-re: fclean all
+.PHONY: all re down clean

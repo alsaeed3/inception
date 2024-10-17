@@ -1,86 +1,57 @@
-version: "3.9"
+version: '3.8'
 
 services:
   nginx:
-    build:
-      context: requirements/nginx/
-      args:
-        CERT_PATH: ${CERT_PATH}
-        KEY_PATH: ${KEY_PATH}
     container_name: nginx
-    image: nginx:42
+    build:
+      context: ./requirements/nginx
+      dockerfile: Dockerfile
     ports:
       - "443:443"
+    depends_on:
+      - wordpress
     restart: on-failure
     env_file:
-      - ./.env
-    depends_on:
-      wordpress:
-        condition: service_started
-    networks:
-      - app
+      - .env
     volumes:
-      - wordpress_vol:/var/www/html/wordpress
+      - wordpress_data:/var/www/html
+    networks:
+      - network
   wordpress:
     container_name: wordpress
-    image: wordpress:42
     build:
-      context: requirements/wordpress
-      args:
-        DB_NAME: ${DB_NAME}
-        DB_USER: ${DB_USER}
-        DB_PASS: ${DB_PASS}
-        DB_ROOT_PASS: ${DB_ROOT_PASS}
-        DB_HOSTNAME: ${DB_HOSTNAME}
-        WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL}
-        WP_ADMIN_USER: ${WP_ADMIN_USER}
-        WP_ADMIN_PASS: ${WP_ADMIN_PASS}
-        WP_URL: ${WP_URL}
-        WP_USER: ${WP_USER}
-        WP_EMAIL: ${WP_EMAIL}
-        WP_PASS: ${WP_PASS}
+      context: ./requirements/wordpress
+      dockerfile: Dockerfile
+    expose:
+      - 9000
     env_file:
-      - ./.env
-    networks:
-      - app
+      - .env
     depends_on:
-      mariadb:
-        condition: service_started
+      - mariadb
+    restart: on-failure
     volumes:
-      - wordpress_vol:/var/www/html/wordpress
+      - wordpress_data:/var/www/html
+    networks:
+      - network
   mariadb:
     container_name: mariadb
-    image: mariadb:42
     build:
-      context: requirements/mariadb
-      args: 
-        DB_NAME: ${DB_NAME}
-        DB_USER: ${DB_USER}
-        DB_PASS: ${DB_PASS}
-        DB_ROOT_PASS: ${DB_ROOT_PASS}
+      context: ./requirements/mariadb
+      dockerfile: Dockerfile
+    expose:
+      - 3306
     env_file:
-      - ./.env
-    networks:
-      - app
+      - .env
+    restart: on-failure
     volumes:
-      - mariadb_vol:/var/lib/mysql
-    
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - network
+
+networks:
+  network:
+    driver: bridge
 
 volumes:
-  mariadb_vol:
-    name: mariadb
-    driver: local
-    driver_opts:
-      type: 'none'
-      o: 'bind'
-      device: '/home/alsaeed/data/mariadb'
-  wordpress_vol:
-    name: wordpress
-    driver: local
-    driver_opts:
-      type: 'none'
-      o: 'bind'
-      device: '/home/alsaeed/data/wordpress'
-networks:
-  app:
-    driver: bridge
+  wordpress_data:
+  mariadb_data:

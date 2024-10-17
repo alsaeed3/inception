@@ -1,25 +1,22 @@
+# Use the official Alpine Linux as a parent image
 FROM alpine:3.19
 
-ARG CERT_PATH
-ARG KEY_PATH
+# Install nginx
+RUN apk update
+RUN apk add --no-cache --update nginx openssl
 
-# Install necessary packages
-RUN apk update && apk add --no-cache openssl nginx
+# Create a directory to hold the certificate and key
+RUN mkdir -p /etc/nginx/ssl
 
-# Create directory for certificates
-RUN mkdir -p /etc/nginx/certificates
+RUN  openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/alsaeed.key -out /etc/nginx/ssl/alsaeed.crt \
+    -subj "/C=AE/ST=Abu Dhabi/L=Abu Dhabi/O=42/CN=alsaeed"
 
-# Generate SSL certificate and key
-RUN openssl req -x509 -newkey rsa:2048 -nodes -keyout ${KEY_PATH} -out ${CERT_PATH} -subj "/CN=alsaeed.42.fr" -days 365
+# Copy the custom server definition file from your host to the container
+COPY conf/default.conf /etc/nginx/http.d/default.conf
 
-# Copy Nginx configuration file
-COPY --chown=www-data:www-data ./conf/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Set permissions and create symbolic link for Nginx configuration
-RUN chmod 755 /var/www/html && ln -s /etc/nginx/conf.d/default.conf /etc/nginx/sites-enabled/default.conf
-
-# Expose HTTPS port
+# Expose port 443
 EXPOSE 443
 
-# Start Nginx
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
