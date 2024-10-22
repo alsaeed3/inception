@@ -1,25 +1,34 @@
-all:
-	@docker compose -f ./srcs/docker-compose.yml up -d --build
+NAME = Inception
+
+all: up
+
+up:
+	@echo "\033[33mLaunching configuration $(NAME)...\033[0m"
+	@bash srcs/requirements/wordpress/tools/init_dir.sh 
+	@docker compose -f srcs/docker-compose.yml --env-file srcs/.env up -d --build
 
 down:
-	@docker compose -f ./srcs/docker-compose.yml down
+	@echo "\033[33mStopping configuration $(NAME)...\033[0m"
+	@docker compose -f srcs/docker-compose.yml --env-file srcs/.env down
 
-re: clean
-	@docker compose -f ./srcs/docker-compose.yml up -d --build
+re: down up
 
-clean:
-	@if docker ps -qa | grep -q .; then \
-		docker stop $$(docker ps -qa); \
-		docker rm $$(docker ps -qa); \
-	fi
-	@if docker volume ls -q | grep -q .; then \
-		docker volume rm $$(docker volume ls -q); \
-	fi
-	@if docker images -qa | grep -q .; then \
-		docker rmi -f $$(docker images -qa); \
-	fi
-	@if docker network ls --format '{{.Name}}' | grep -v 'bridge\|host\|none' | grep -q .; then \
-		docker network rm $$(docker network ls --format '{{.Name}}' | grep -v 'bridge\|host\|none'); \
-	fi
+clean: down
+	@echo "\033[33mCleaning configuration $(NAME)...\033[0m"
+	@yes | docker system prune --all
 
-.PHONY: all re down clean
+fclean: down
+	@echo "\033[33mTotal clean of all Docker configurations\033[0m"
+	@yes | docker system prune --all
+	@docker network prune --force
+	@docker volume prune --force
+	@sudo rm -rf /home/$(USER)/data/wordpress_vol/*
+	@sudo rm -rf /home/$(USER)/data/mariadb_vol/*
+	@sudo rm -rf /home/$(USER)/data/wordpress_vol
+	@sudo rm -rf /home/$(USER)/data/mariadb_vol
+	@sudo rm -rf /home/$(USER)/data
+
+rebuild: fclean up
+
+.PHONY = start all build down re clean fclean
+
