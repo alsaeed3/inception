@@ -14,6 +14,8 @@ RUN mkdir -p /run/php
 
 COPY ./conf/www.conf /etc/php83/php-fpm.d
 
+# COPY ./conf/wp-config.php /var/www/html/wordpress/wp-config.php
+
 #we copy the script, give the right to launch it in local on our computer
 COPY ./tools/create_wordpress.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/create_wordpress.sh

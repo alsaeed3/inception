@@ -13,7 +13,7 @@ RUN  openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -subj "/C=AE/ST=Abu Dhabi/L=Abu Dhabi/O=42/CN=alsaeed"
 
 # Copy the custom server definition file from your host to the container
-COPY conf/default.conf /etc/nginx/http.d/default.conf
+COPY conf/nginx.conf /etc/nginx/http.d/nginx.conf
 
 # Expose port 443
 EXPOSE 443
