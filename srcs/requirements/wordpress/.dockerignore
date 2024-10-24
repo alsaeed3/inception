@@ -1,2 +1,3 @@
 .git
 .env
+tools/init_dir.sh
